@@ -2,10 +2,11 @@ import React, {useState} from 'react';
 import TagsInput from 'react-tagsinput';
 import 'react-tagsinput/react-tagsinput.css';
 import Dropzone from 'react-dropzone'
-
+import axios from 'axios';
 
 const CreateProduct = (props) => {
-
+    const [product, setProduct] = useState({});
+    const [productImage, setProductImage] = useState({});
     const [productVariantPrices, setProductVariantPrices] = useState([])
 
     const [productVariants, setProductVariant] = useState([
@@ -74,10 +75,59 @@ const CreateProduct = (props) => {
         return ans;
     }
 
+    // handle product change
+    const handleProductChange = e => {
+        setProduct({
+            ...product,
+            [e.target.name]: e.target.value
+        })
+    }
+
     // Save product
     let saveProduct = (event) => {
         event.preventDefault();
         // TODO : write your code here to save the product
+
+        const path = productImage.map(file => ({
+            'file_path': URL.createObjectURL(file).replace(/^blob:/, "")
+        }))
+
+        console.log(path)
+        
+        const data = {
+            title: product.title,
+            sku: product.sku,
+            description: product.description,
+
+            product_variant_prices: productVariantPrices.map((price) => ({
+                price: price.price,
+                stock: price.stock,
+            })),
+            product_variants: productVariants.map(variant => ({
+                variant: variant.option,
+                variant_title: variant.tags[0]
+            })),
+            product_images: productImage.map(file => ({
+                'file_path': URL.createObjectURL(file).replace(/^blob:/, "")
+            })),
+        };
+
+
+        var cookies = document.cookie.split(';');
+        axios.post("http://127.0.0.1:8000/product/api/create/", data, {
+            headers: {
+                'X-CSRFToken': cookies[0].split('=')[1],
+                'Content-Type': 'application/json'
+            }
+        })
+        .then((response) => {
+            // Handle success response
+            console.log(response.data);
+        })
+        .catch((error) => {
+            // Handle error response
+            console.error(error);
+        });
     }
 
 
@@ -90,15 +140,15 @@ const CreateProduct = (props) => {
                             <div className="card-body">
                                 <div className="form-group">
                                     <label htmlFor="">Product Name</label>
-                                    <input type="text" placeholder="Product Name" className="form-control"/>
+                                    <input onChange={handleProductChange} name="title" type="text" placeholder="Product Name" className="form-control"/>
                                 </div>
                                 <div className="form-group">
                                     <label htmlFor="">Product SKU</label>
-                                    <input type="text" placeholder="Product Name" className="form-control"/>
+                                    <input onChange={handleProductChange} name="sku" type="text" placeholder="Product Name" className="form-control"/>
                                 </div>
                                 <div className="form-group">
                                     <label htmlFor="">Description</label>
-                                    <textarea id="" cols="30" rows="4" className="form-control"></textarea>
+                                    <textarea onChange={handleProductChange} name="description" id="" cols="30" rows="4" className="form-control"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -109,7 +159,7 @@ const CreateProduct = (props) => {
                                 <h6 className="m-0 font-weight-bold text-primary">Media</h6>
                             </div>
                             <div className="card-body border">
-                                <Dropzone onDrop={acceptedFiles => console.log(acceptedFiles)}>
+                                <Dropzone onDrop={acceptedFiles => setProductImage(acceptedFiles)}>
                                     {({getRootProps, getInputProps}) => (
                                         <section>
                                             <div {...getRootProps()}>
@@ -201,8 +251,8 @@ const CreateProduct = (props) => {
                                                 return (
                                                     <tr key={index}>
                                                         <td>{productVariantPrice.title}</td>
-                                                        <td><input className="form-control" type="text"/></td>
-                                                        <td><input className="form-control" type="text"/></td>
+                                                        <td><input name="price" className="form-control" type="text"/></td>
+                                                        <td><input name="stock" className="form-control" type="text"/></td>
                                                     </tr>
                                                 )
                                             })
